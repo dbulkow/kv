@@ -47,7 +47,7 @@ func (e *Etcd) Set(key, val string) error {
 	var cerr error
 
 	for _, peer := range e.Peers {
-		url := fmt.Sprintf("%s/v2/keys%s?ttl=%d", peer, key, e.TTL)
+		url := fmt.Sprintf("%s/v2/keys/%s?ttl=%d", peer, key, e.TTL)
 
 		req, err := http.NewRequest(http.MethodPut, url, putbody)
 		if err != nil {
