@@ -1,6 +1,10 @@
 package kv
 
-import consulapi "github.com/hashicorp/consul/api"
+import (
+	"errors"
+
+	consulapi "github.com/hashicorp/consul/api"
+)
 
 type Consul struct {
 	client *consulapi.Client
@@ -44,6 +48,10 @@ func (c *Consul) Get(key string) (string, error) {
 	pair, _, err := kv.Get(key, nil)
 	if err != nil {
 		return "", nil
+	}
+
+	if pair == nil {
+		return "", errors.New("key not found")
 	}
 
 	return string(pair.Value), nil
