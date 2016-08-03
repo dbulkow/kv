@@ -237,3 +237,73 @@ func (e *Etcd) Del(key string) error {
 
 	return nil
 }
+
+func (e *Etcd) List(path string) ([]*KVPair, error) {
+	if e.client == nil {
+		e.client = &http.Client{}
+	}
+
+	e.readenv()
+
+	var resp *http.Response
+	var err, cerr error
+
+	for _, peer := range e.Peers {
+		url := fmt.Sprintf("%s%s%s", peer, EtcdBase, path)
+
+		resp, err = e.client.Get(url)
+		if err != nil {
+			cerr = err
+			continue
+		}
+
+		cerr = nil
+		break
+	}
+	if cerr != nil {
+		return nil, cerr
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("etcd.List status: %s", http.StatusText(resp.StatusCode))
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	reply := struct {
+		Action string `json:"action"`
+		Node   struct {
+			CreatedIndex  float64 `json:"createdIndex"`
+			Dir           bool    `json:"dir"`
+			Key           string  `json:"key"`
+			ModifiedIndex float64 `json:"modifiedIndex"`
+			Nodes         []struct {
+				CreatedIndex  float64 `json:"createdIndex"`
+				Key           string  `json:"key"`
+				ModifiedIndex float64 `json:"modifiedIndex"`
+				Value         string  `json:"value"`
+			} `json:"nodes"`
+		} `json:"node"`
+	}{}
+
+	if err := json.Unmarshal(b, reply); err != nil {
+		return nil, fmt.Errorf("unmarshal: %v", err)
+	}
+
+	if reply.Action != "get" {
+		return nil, fmt.Errorf("expected action \"get\", got \"%s\"", reply.Action)
+	}
+
+	kvpairs := make([]*KVPair, 0)
+
+	for _, node := range reply.Node.Nodes {
+		kv := &KVPair{Key: node.Key, Val: node.Value}
+		kvpairs = append(kvpairs, kv)
+	}
+
+	return kvpairs, nil
+}

@@ -71,3 +71,25 @@ func (c *Consul) Del(key string) error {
 
 	return nil
 }
+
+func (c *Consul) List(path string) ([]*KVPair, error) {
+	if err := c.connect(); err != nil {
+		return nil, err
+	}
+
+	kv := c.client.KV()
+
+	pairs, _, err := kv.List(path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	kvpairs := make([]*KVPair, 0)
+
+	for _, p := range pairs {
+		newkv := &KVPair{Key: p.Key, Val: string(p.Value)}
+		kvpairs = append(kvpairs, newkv)
+	}
+
+	return kvpairs, nil
+}
