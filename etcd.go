@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const EtcdBase = "/v2/keys/"
+
 type Etcd struct {
 	TTL    int
 	Peers  []string
@@ -47,7 +49,7 @@ func (e *Etcd) Set(key, val string) error {
 	var cerr error
 
 	for _, peer := range e.Peers {
-		url := fmt.Sprintf("%s/v2/keys/%s?ttl=%d", peer, key, e.TTL)
+		url := fmt.Sprintf("%s%s%s?ttl=%d", peer, EtcdBase, key, e.TTL)
 
 		req, err := http.NewRequest(http.MethodPut, url, putbody)
 		if err != nil {
@@ -116,7 +118,7 @@ func (e *Etcd) Get(key string) (string, error) {
 	var err, cerr error
 
 	for _, peer := range e.Peers {
-		url := fmt.Sprintf("%s/v2/keys%s", peer, key)
+		url := fmt.Sprintf("%s%s%s", peer, EtcdBase, key)
 
 		resp, err = e.client.Get(url)
 		if err != nil {
@@ -175,7 +177,7 @@ func (e *Etcd) Del(key string) error {
 	var cerr error
 
 	for _, peer := range e.Peers {
-		url := fmt.Sprintf("%s/v2/keys%s?ttl=%d", peer, key, e.TTL)
+		url := fmt.Sprintf("%s%s%s", peer, EtcdBase, key)
 
 		req, err := http.NewRequest(http.MethodDelete, url, nil)
 		if err != nil {
