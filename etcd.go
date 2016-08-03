@@ -200,7 +200,7 @@ func (e *Etcd) Del(key string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK && resp.StatusCode > http.StatusAccepted {
-		return fmt.Errorf("etcd.Get status: %s", http.StatusText(resp.StatusCode))
+		return fmt.Errorf("etcd.Del status: %s", http.StatusText(resp.StatusCode))
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
