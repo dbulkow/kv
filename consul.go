@@ -2,11 +2,15 @@ package kv
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"time"
 
 	consulapi "github.com/hashicorp/consul/api"
 )
 
 type Consul struct {
+	TTL    int
 	client *consulapi.Client
 }
 
@@ -18,8 +22,45 @@ func (c *Consul) connect() (err error) {
 		if err != nil {
 			return
 		}
+
+		if c.TTL > 0 {
+			go c.expire()
+		}
 	}
+
 	return
+}
+
+func (c *Consul) expire() {
+	kv := c.client.KV()
+
+	for {
+		time.Sleep(60 * time.Second)
+
+		pairs, _, err := kv.List("/", nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "keystore list: %v\n", err)
+			continue
+		}
+
+		for _, p := range pairs {
+			if p.Flags == 0 {
+				continue
+			}
+
+			deadline := time.Unix(int64(p.Flags), 0)
+
+			if time.Now().After(deadline) {
+				fmt.Println("deleting", p.Key)
+
+				_, err := kv.Delete(p.Key, nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "keystore del: %v\n", err)
+					continue
+				}
+			}
+		}
+	}
 }
 
 func (c *Consul) Set(key, val string) error {
@@ -29,7 +70,12 @@ func (c *Consul) Set(key, val string) error {
 
 	kv := c.client.KV()
 
-	p := &consulapi.KVPair{Key: key, Value: []byte(val)}
+	p := &consulapi.KVPair{
+		Key:   key,
+		Value: []byte(val),
+		Flags: uint64(time.Now().Add(time.Duration(c.TTL) * time.Second).Unix()),
+	}
+
 	_, err := kv.Put(p, nil)
 	if err != nil {
 		return err
