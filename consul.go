@@ -73,7 +73,11 @@ func (c *Consul) Set(key, val string) error {
 	p := &consulapi.KVPair{
 		Key:   key,
 		Value: []byte(val),
-		Flags: uint64(time.Now().Add(time.Duration(c.TTL) * time.Second).Unix()),
+		Flags: 0,
+	}
+
+	if c.TTL != 0 {
+		p.Flags = uint64(time.Now().Add(time.Duration(c.TTL) * time.Second).Unix())
 	}
 
 	_, err := kv.Put(p, nil)
